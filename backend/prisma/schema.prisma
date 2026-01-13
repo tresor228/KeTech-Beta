@@ -1,0 +1,445 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modèle User de base
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  emailVerified Boolean  @default(false)
+  role          UserRole @default(DEVELOPER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  developerProfile DeveloperProfile?
+  companyProfile   CompanyProfile?
+  kyc              KYC?
+  keys             UserKeys?
+
+  @@map("users")
+}
+
+enum UserRole {
+  DEVELOPER
+  COMPANY
+  ADMIN
+}
+
+// Profil Développeur
+model DeveloperProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  firstName       String?
+  lastName        String?
+  bio             String?
+  avatar          String?
+  location        String?
+  github          String?
+  linkedin        String?
+  portfolio       String?
+  globalScore     Float    @default(0)
+  level           String   @default("beginner") // beginner, intermediate, advanced, expert
+  objectives      String[] // Objectifs du développeur
+  interests       String[] // Centres d'intérêt
+  skills          Skill[]
+  availability    String?  // available, busy, unavailable
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testSubmissions   TestSubmission[]
+  projectMembers    ProjectMember[]
+  jobApplications   JobApplication[]
+  collaborations    Collaboration[]   @relation("DeveloperCollaborations")
+  hackathonTeams    HackathonTeamMember[]
+  achievements      Achievement[]
+
+  @@map("developer_profiles")
+}
+
+// Compétences
+model Skill {
+  id              String   @id @default(uuid())
+  developerId     String
+  name            String   // React, Node.js, Python, etc.
+  level           String   @default("beginner") // beginner, intermediate, advanced, expert
+  yearsExperience Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  developer DeveloperProfile @relation(fields: [developerId], references: [id], onDelete: Cascade)
+
+  @@unique([developerId, name])
+  @@map("skills")
+}
+
+// Profil Entreprise
+model CompanyProfile {
+  id          String      @id @default(uuid())
+  userId      String      @unique
+  name        String
+  description String?
+  logo        String?
+  website     String?
+  location    String?
+  type        CompanyType
+  size        String?     // 1-10, 11-50, 51-200, 201-500, 500+
+  industry    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs         Job[]
+  tests        Test[]
+  hackathons   Hackathon[]
+
+  @@map("company_profiles")
+}
+
+enum CompanyType {
+  STARTUP
+  AGENCE
+  PME
+  GRAND_GROUPE
+  AUTRE
+}
+
+// KYC (Know Your Customer)
+model KYC {
+  id              String      @id @default(uuid())
+  userId          String      @unique
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime
+  idType          IDType
+  idNumber        String
+  idDocumentFront String?     // Chemin vers le document
+  idDocumentBack  String?     // Chemin vers le document (si requis)
+  status          KYCStatus   @default(NOT_VERIFIED)
+  verifiedAt      DateTime?
+  verifiedBy      String?     // ID de l'admin qui a vérifié
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kyc")
+}
+
+enum IDType {
+  PASSPORT
+  NATIONAL_ID
+  DRIVERS_LICENSE
+  OTHER
+}
+
+enum KYCStatus {
+  NOT_VERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// User Keys (système de Keys pour postuler aux jobs)
+model UserKeys {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  balance     Int      @default(100) // 100 Keys gratuites à l'inscription
+  totalEarned Int      @default(100)
+  totalSpent  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions KeyTransaction[]
+
+  @@map("user_keys")
+}
+
+// Transactions de Keys
+model KeyTransaction {
+  id          String      @id @default(uuid())
+  userId      String
+  type        KeyTransactionType
+  amount      Int
+  description String?
+  jobId       String?     // Si transaction liée à un job
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  userKeys UserKeys @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("key_transactions")
+}
+
+enum KeyTransactionType {
+  EARNED
+  SPENT
+  GIFTED
+}
+
+// Tests Techniques
+model Test {
+  id          String   @id @default(uuid())
+  companyId   String
+  title       String
+  description String?
+  duration    Int      // Durée en minutes
+  difficulty  String   // beginner, intermediate, advanced
+  questions   Json     // Questions du test (QCM, code, etc.)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  company     CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submissions TestSubmission[]
+
+  @@map("tests")
+}
+
+// Soumissions de Tests
+model TestSubmission {
+  id          String   @id @default(uuid())
+  testId      String
+  developerId String
+  answers     Json     // Réponses du développeur
+  score       Float?
+  maxScore    Float?
+  duration    Int?     // Durée réelle en minutes
+  startedAt   DateTime
+  submittedAt DateTime?
+  status      SubmissionStatus @default(IN_PROGRESS)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  test      Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  developer DeveloperProfile @relation(fields: [developerId], references: [id], onDelete: Cascade)
+
+  @@map("test_submissions")
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+  EXPIRED
+}
+
+// Projets Collaboratifs
+model Project {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  difficulty  String   // beginner, intermediate, advanced
+  duration    String?  // "2-3 heures", "4-5 heures", etc.
+  points      Int      @default(0)
+  technologies String[]
+  category    String?  // Frontend, Backend, Fullstack
+  instructions Json?   // Objectives, requirements, tips
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members ProjectMember[]
+
+  @@map("projects")
+}
+
+// Membres de projets
+model ProjectMember {
+  id          String   @id @default(uuid())
+  projectId   String
+  developerId String
+  role        String   @default("member") // owner, member
+  status      String   @default("active") // active, completed, abandoned
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  developer  DeveloperProfile @relation(fields: [developerId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, developerId])
+  @@map("project_members")
+}
+
+// Offres d'emploi
+model Job {
+  id              String   @id @default(uuid())
+  companyId       String
+  title           String
+  description     String
+  location        String
+  contractType    String   // CDI, CDD, Freelance, Stage
+  workType        String   // Temps plein, Temps partiel, Remote
+  salaryMin       Int?
+  salaryMax       Int?
+  currency        String   @default("FCFA")
+  experienceLevel String?  // Junior, Mid-level, Senior
+  keysRequired    Int      @default(5) // Nombre de Keys nécessaires pour postuler
+  skills          String[]
+  requirements    String[]
+  responsibilities String[]
+  benefits        String?
+  isActive        Boolean  @default(true)
+  applicationsCount Int    @default(0)
+  publishedAt     DateTime @default(now())
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  company      CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applications JobApplication[]
+
+  @@map("jobs")
+}
+
+// Candidatures aux jobs
+model JobApplication {
+  id          String   @id @default(uuid())
+  jobId       String
+  developerId String
+  status      ApplicationStatus @default(PENDING)
+  keysSpent   Int      // Nombre de Keys dépensées
+  transactionId String? // ID de transaction Keys
+  message     String?
+  appliedAt   DateTime @default(now())
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  job        Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  developer  DeveloperProfile @relation(fields: [developerId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, developerId])
+  @@map("job_applications")
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+// Collaborations entre développeurs
+model Collaboration {
+  id          String   @id @default(uuid())
+  requesterId String   // Développeur qui a fait la demande
+  targetId    String   // Développeur cible
+  projectId   String?  // Si collaboration pour un projet spécifique
+  message     String?
+  status      CollaborationStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  requester DeveloperProfile @relation("DeveloperCollaborations", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, targetId, projectId])
+  @@map("collaborations")
+}
+
+enum CollaborationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+// Hackathons
+model Hackathon {
+  id          String   @id @default(uuid())
+  companyId   String
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  maxTeamSize Int      @default(5)
+  prize       String?
+  rules       Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  company CompanyProfile      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  teams   HackathonTeam[]
+
+  @@map("hackathons")
+}
+
+// Équipes de hackathon
+model HackathonTeam {
+  id          String   @id @default(uuid())
+  hackathonId String
+  name        String
+  projectName String?
+  projectUrl  String?
+  score       Float?
+  rank        Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hackathon Hackathon           @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  members   HackathonTeamMember[]
+
+  @@map("hackathon_teams")
+}
+
+// Membres d'équipe de hackathon
+model HackathonTeamMember {
+  id          String   @id @default(uuid())
+  teamId      String
+  developerId String
+  role        String   @default("member") // leader, member
+  joinedAt    DateTime @default(now())
+
+  // Relations
+  team      HackathonTeam     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  developer DeveloperProfile  @relation(fields: [developerId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, developerId])
+  @@map("hackathon_team_members")
+}
+
+// Réalisations / Badges
+model Achievement {
+  id          String   @id @default(uuid())
+  developerId String
+  type        String   // badge, certificate, milestone
+  title       String
+  description String?
+  icon        String?
+  unlockedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  // Relations
+  developer DeveloperProfile @relation(fields: [developerId], references: [id], onDelete: Cascade)
+
+  @@map("achievements")
+}
