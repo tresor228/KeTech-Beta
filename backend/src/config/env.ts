@@ -14,6 +14,11 @@ export const env = {
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || '',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  
+  // Firebase
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',
+  FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY || '',
+  FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL || '',
 
   // OpenAI
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
@@ -31,10 +36,19 @@ export const env = {
 
 // Validation des variables d'environnement requises
 const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
+const firebaseRequiredEnvVars = ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL'];
+
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     console.error(`❌ Variable d'environnement manquante: ${envVar}`);
     process.exit(1);
   }
+}
+
+for (const envVar of firebaseRequiredEnvVars) {
+    if (!process.env[envVar]) {
+      // Temporarily just warning during migration
+      console.warn(`️⚠️ Variable d'environnement Firebase manquante: ${envVar}. Ajoutez-la pour continuer l'intégration.`);
+    }
 }

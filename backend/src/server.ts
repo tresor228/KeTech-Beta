@@ -2,6 +2,7 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
+import './config/firebase'; // Import to initialize Firebase Admin SDK
 
 // Import des routes
 import authRoutes from './routes/auth.routes';
