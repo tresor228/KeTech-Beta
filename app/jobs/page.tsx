@@ -101,7 +101,7 @@ export default function JobsPage() {
     return matchesSearch && matchesContract && matchesExperience && matchesLocation
   })
 
-  const formatSalary = (min?: number, max?: number, currency: string) => {
+  const formatSalary = (currency: string, min?: number, max?: number) => {
     if (!min && !max) return "Salaire non spécifié"
     if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`
     if (min) return `À partir de ${min.toLocaleString()} ${currency}`
@@ -248,7 +248,7 @@ export default function JobsPage() {
                         <div className="flex items-center gap-2">
                           <DollarSign className="size-4 text-muted-foreground" />
                           <span className="text-sm font-medium">
-                            {formatSalary(job.salaryMin, job.salaryMax, job.currency)}
+                            {formatSalary(job.currency, job.salaryMin, job.salaryMax)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -270,14 +270,18 @@ export default function JobsPage() {
                       <Button variant="outline" asChild>
                         <Link href={`/jobs/${job.id}`}>Voir les détails</Link>
                       </Button>
-                      <Button
-                        asChild
-                        disabled={keysBalance !== null && keysBalance < job.keysRequired}
-                      >
-                        <Link href={`/jobs/${job.id}/apply`}>
+
+                      {keysBalance !== null && keysBalance < job.keysRequired ? (
+                        <Button disabled>
                           Postuler ({job.keysRequired} Keys)
-                        </Link>
-                      </Button>
+                        </Button>
+                      ) : (
+                        <Button asChild>
+                          <Link href={`/jobs/${job.id}/apply`}>
+                            Postuler ({job.keysRequired} Keys)
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                     {keysBalance !== null && keysBalance < job.keysRequired && (
                       <p className="text-xs text-destructive mt-2 text-right">

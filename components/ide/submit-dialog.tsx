@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { AlertCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface SubmitDialogProps {
   open: boolean
@@ -20,10 +21,20 @@ interface SubmitDialogProps {
 
 export function SubmitDialog({ open, onOpenChange, testId }: SubmitDialogProps) {
   const router = useRouter()
+  const { toast } = useToast()
 
   const handleSubmit = () => {
-    // Mock submission - redirect to dashboard
-    router.push("/dashboard")
+    // Mock submission - notify and redirect to dashboard
+    toast({
+      title: "Soumission réussie",
+      description: "Notre IA analysera votre code et votre score sera disponible dans 24h à 48h.",
+      duration: 5000,
+    })
+
+    setTimeout(() => {
+      onOpenChange(false)
+      router.push("/dashboard")
+    }, 1500)
   }
 
   return (

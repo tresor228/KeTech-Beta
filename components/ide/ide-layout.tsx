@@ -13,8 +13,33 @@ interface IDELayoutProps {
 }
 
 export function IDELayout({ testId, timeRemaining }: IDELayoutProps) {
-  const [selectedFile, setSelectedFile] = useState("index.js")
+  const [files, setFiles] = useState<Record<string, string>>({
+    "main.ts": "",
+  })
+  const [selectedFile, setSelectedFile] = useState("main.ts")
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+
+  const fileNames = Object.keys(files)
+
+  const handleEditorChange = (value: string) => {
+    setFiles(prev => ({ ...prev, [selectedFile]: value }))
+  }
+
+  const handleAddFile = (name: string) => {
+    if (!files[name]) {
+      setFiles(prev => ({ ...prev, [name]: "" }))
+      setSelectedFile(name)
+    }
+  }
+
+  const handleDeleteFile = (name: string) => {
+    const newFiles = { ...files }
+    delete newFiles[name]
+    setFiles(newFiles)
+    if (selectedFile === name) {
+      setSelectedFile(Object.keys(newFiles)[0] || "")
+    }
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -24,13 +49,23 @@ export function IDELayout({ testId, timeRemaining }: IDELayoutProps) {
       {/* Main IDE Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* File Explorer */}
-        <FileExplorer selectedFile={selectedFile} onSelectFile={setSelectedFile} />
+        <FileExplorer
+          files={fileNames}
+          selectedFile={selectedFile}
+          onSelectFile={setSelectedFile}
+          onAddFile={handleAddFile}
+          onDeleteFile={handleDeleteFile}
+        />
 
         {/* Code Editor & Terminal */}
         <div className="flex-1 flex flex-col">
           {/* Code Editor */}
           <div className="flex-1 overflow-hidden">
-            <CodeEditor fileName={selectedFile} />
+            <CodeEditor
+              fileName={selectedFile}
+              value={files[selectedFile] || ""}
+              onChange={handleEditorChange}
+            />
           </div>
 
           {/* Terminal */}

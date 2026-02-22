@@ -16,7 +16,13 @@ export function ProfileHeader() {
             <h1 className="text-3xl font-bold">John Doe</h1>
             <CheckCircle className="size-6 text-primary" />
           </div>
-          <p className="text-muted-foreground mb-4">Full-Stack Developer</p>
+          <div className="flex items-center gap-2 mb-4">
+            <p className="text-muted-foreground">Full-Stack Developer</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-500 border border-amber-200 dark:border-amber-800/50">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7" /><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" /></svg>
+              Ambassadeur
+            </span>
+          </div>
 
           <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
             <div className="flex items-center gap-1">

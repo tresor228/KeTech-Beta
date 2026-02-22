@@ -108,7 +108,7 @@ export default function JobDetailsPage() {
     )
   }
 
-  const formatSalary = (min?: number, max?: number, currency: string) => {
+  const formatSalary = (currency: string, min?: number, max?: number) => {
     if (!min && !max) return "Salaire non spécifié"
     if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`
     if (min) return `À partir de ${min.toLocaleString()} ${currency}`
@@ -203,7 +203,7 @@ export default function JobDetailsPage() {
                 <div className="flex items-center gap-2">
                   <DollarSign className="size-5 text-primary" />
                   <span className="text-lg font-semibold">
-                    {formatSalary(job.salaryMin, job.salaryMax, job.currency)}
+                    {formatSalary(job.currency, job.salaryMin, job.salaryMax)}
                   </span>
                 </div>
                 {job.benefits && (
@@ -221,7 +221,7 @@ export default function JobDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {job.skills.map((skill, index) => (
+                  {job.skills.map((skill: string, index: number) => (
                     <Badge key={index} variant="secondary">
                       {skill}
                     </Badge>
@@ -239,7 +239,7 @@ export default function JobDetailsPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {job.responsibilities.map((responsibility, index) => (
+                  {job.responsibilities.map((responsibility: string, index: number) => (
                     <li key={index} className="flex items-start gap-2">
                       <span className="text-primary mt-1">•</span>
                       <span className="text-muted-foreground">{responsibility}</span>
@@ -258,7 +258,7 @@ export default function JobDetailsPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {job.requirements.map((requirement, index) => (
+                  {job.requirements.map((requirement: string, index: number) => (
                     <li key={index} className="flex items-start gap-2">
                       <span className="text-primary mt-1">•</span>
                       <span className="text-muted-foreground">{requirement}</span>
@@ -285,15 +285,17 @@ export default function JobDetailsPage() {
                       <Link href="/keys/purchase">Acheter des Keys</Link>
                     </Button>
                   )}
-                  <Button
-                    size="lg"
-                    disabled={!canApply}
-                    asChild
-                  >
-                    <Link href={`/jobs/${jobId}/apply`}>
+                  {canApply ? (
+                    <Button size="lg" asChild>
+                      <Link href={`/jobs/${jobId}/apply`}>
+                        Postuler maintenant ({job.keysRequired} Keys)
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button size="lg" disabled>
                       Postuler maintenant ({job.keysRequired} Keys)
-                    </Link>
-                  </Button>
+                    </Button>
+                  )}
                 </div>
               </div>
               {!canApply && keysBalance !== null && (

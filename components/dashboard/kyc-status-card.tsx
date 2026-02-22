@@ -45,17 +45,17 @@ export function KYCStatusCard() {
           <h3 className="text-2xl font-bold">{config.title}</h3>
         </div>
         <div className={`size-12 rounded-full ${config.bgColor} flex items-center justify-center`}>
-          <Icon className={`size-6 ${status === "verified" ? "text-white" : config.iconColor}`} />
+          <Icon className={`size-6 ${(status as string) === "verified" ? "text-white" : config.iconColor}`} />
         </div>
       </div>
 
       <p className="text-muted-foreground mb-6">{config.description}</p>
 
-      <Link href="/profile#kyc">
-        <Button variant={status === "verified" ? "outline" : "default"} className="w-full">
+      <Button asChild variant={(status as string) === "verified" ? "outline" : "default"} className="w-full">
+        <Link href="/profile#kyc">
           {config.action}
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     </div>
   )
 }

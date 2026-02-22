@@ -1,4 +1,4 @@
-,'use client';
+"use client";
 
 import { useState } from 'react';
 import Editor from '@monaco-editor/react';
@@ -14,10 +14,10 @@ interface CodeEditorProps {
   editorRef?: React.MutableRefObject<CodeEditorRef | null>;
 }
 
-export default function CodeEditor({ 
-  initialCode = '', 
-  language = 'javascript', 
-  editorRef 
+export default function CodeEditor({
+  initialCode = '',
+  language = 'javascript',
+  editorRef
 }: CodeEditorProps) {
   const [code, setCode] = useState(initialCode);
 
@@ -33,7 +33,7 @@ export default function CodeEditor({
       height="40vh"
       language={language}
       value={code}
-      onChange={(value) => setCode(value || '')}
+      onChange={(value: string | undefined) => setCode(value || '')}
       theme="vs-dark"
       options={{
         minimap: { enabled: false },
