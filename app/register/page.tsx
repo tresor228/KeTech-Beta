@@ -15,10 +15,16 @@ import { cn } from "@/lib/utils"
 type AccountType = "developer" | "company" | null
 type CompanyType = "agence" | "startup" | "pme" | "grand_groupe" | "autre" | null
 
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { useToast } from "@/hooks/use-toast"
+
 export default function RegisterPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [accountType, setAccountType] = useState<AccountType>(null)
   const [companyType, setCompanyType] = useState<CompanyType>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     companyName: "",
@@ -29,17 +35,70 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (accountType === "developer") {
-      // TODO: Appel API réel pour créer le compte développeur
-      // Après création, allouer 100 Keys gratuites
-      // await keysService.allocateInitialKeys(userId)
-      
-      // Mock registration - redirect to onboarding
-      // Note: En production, l'allocation des 100 Keys se fera côté serveur lors de la création du compte
-      router.push("/onboarding")
-    } else if (accountType === "company" && companyType) {
-      // TODO: Appel API réel pour créer le compte entreprise
-      router.push("/company/dashboard")
+
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Erreur",
+        description: "Les mots de passe ne correspondent pas",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // 1. Inscription Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
+      const idToken = await userCredential.user.getIdToken()
+
+      // 2. Synchronisation avec le backend KeTech
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/firebase/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          idToken,
+          role: accountType === 'company' ? 'COMPANY' : 'DEVELOPER',
+          extraData: {
+            firstName: accountType === 'developer' ? formData.name.split(' ')[0] : undefined,
+            lastName: accountType === 'developer' ? formData.name.split(' ').slice(1).join(' ') : undefined,
+            companyName: formData.companyName,
+            companyType: companyType?.toUpperCase()
+          }
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Erreur lors de la synchronisation avec le serveur')
+      }
+
+      if (result.data.token) {
+        localStorage.setItem('ketech_token', result.data.token)
+      }
+
+      toast({
+        title: "Compte créé !",
+        description: "Bienvenue sur KeTech.",
+      })
+
+      if (accountType === "developer") {
+        router.push("/onboarding")
+      } else {
+        router.push("/company/dashboard")
+      }
+    } catch (error: any) {
+      console.error(error)
+      toast({
+        title: "Erreur d'inscription",
+        description: error.message || "Impossible de créer votre compte",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -331,13 +390,13 @@ export default function RegisterPage() {
               />
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               size="lg"
-              disabled={accountType === "company" && !companyType}
+              disabled={(accountType === "company" && !companyType) || isLoading}
             >
-              {accountType === "developer" ? "Créer mon compte" : "Créer le compte entreprise"}
+              {isLoading ? "Création..." : (accountType === "developer" ? "Créer mon compte" : "Créer le compte entreprise")}
             </Button>
           </form>
         </div>

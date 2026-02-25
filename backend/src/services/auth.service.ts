@@ -3,6 +3,7 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { BadRequestError, UnauthorizedError, ConflictError, NotFoundError } from '../utils/errors';
 import { UserRole, KYCStatus, CompanyType } from '@prisma/client';
+import admin from '../config/firebase';
 
 interface RegisterDeveloperData {
   email: string;
@@ -24,6 +25,12 @@ interface RegisterCompanyData {
 interface LoginData {
   email: string;
   password: string;
+}
+
+interface FirebaseLoginData {
+  idToken: string;
+  role?: UserRole;
+  extraData?: any;
 }
 
 export const authService = {
@@ -174,6 +181,10 @@ export const authService = {
     }
 
     // Vérifier le mot de passe
+    if (!user.password) {
+      throw new UnauthorizedError('Ce compte utilise la connexion sociale (Firebase). Veuillez vous connecter avec Google/GitHub.');
+    }
+
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
@@ -233,5 +244,162 @@ export const authService = {
       kyc: user.kyc,
       keys: user.keys,
     };
+  },
+
+  // Vérifier le token Firebase et synchroniser l'utilisateur
+  verifyFirebaseToken: async (idToken: string) => {
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const { uid, email } = decodedToken;
+
+      if (!email) {
+        throw new BadRequestError('Email manquant dans le token Firebase');
+      }
+
+      // Chercher l'utilisateur par firebaseUid ou par email
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { firebaseUid: uid },
+            { email: email }
+          ]
+        },
+        include: {
+          developerProfile: true,
+          companyProfile: true,
+          keys: true,
+        }
+      });
+
+      // Si l'utilisateur n'existe pas, on pourrait le créer ici ou renvoyer une erreur 
+      // pour que le frontend redirige vers l'inscription complète
+      if (!user) {
+        return { needsRegistration: true, firebaseData: decodedToken };
+      }
+
+      // Mettre à jour le firebaseUid si nécessaire
+      if (!user.firebaseUid) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { firebaseUid: uid },
+          include: {
+            developerProfile: true,
+            companyProfile: true,
+            keys: true,
+          }
+        });
+      }
+
+      // Générer le token KeTech JWT
+      const token = generateToken({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          emailVerified: user.emailVerified,
+          developerProfile: user.developerProfile,
+          companyProfile: user.companyProfile,
+          keys: user.keys,
+        },
+        token,
+      };
+    } catch (error) {
+      console.error('Erreur Firebase Auth:', error);
+      throw new UnauthorizedError('Token Firebase invalide');
+    }
+  },
+
+  // Créer un utilisateur à partir de Firebase
+  registerWithFirebase: async (data: FirebaseLoginData) => {
+    const { idToken, role = UserRole.DEVELOPER, extraData } = data;
+
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const { uid, email } = decodedToken;
+
+      if (!email) {
+        throw new BadRequestError('Email manquant dans le token Firebase');
+      }
+
+      // Vérifier si l'utilisateur existe déjà
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { firebaseUid: uid },
+            { email: email }
+          ]
+        }
+      });
+
+      if (existingUser) {
+        throw new ConflictError('Cet utilisateur existe déjà');
+      }
+
+      // Créer l'utilisateur
+      const user = await prisma.user.create({
+        data: {
+          email,
+          firebaseUid: uid,
+          role,
+          emailVerified: true,
+          ...(role === UserRole.DEVELOPER ? {
+            developerProfile: {
+              create: {
+                firstName: extraData?.firstName,
+                lastName: extraData?.lastName,
+                globalScore: 0,
+                level: 'beginner',
+              }
+            },
+            keys: {
+              create: {
+                balance: 100,
+                totalEarned: 100,
+                totalSpent: 0,
+              }
+            }
+          } : {
+            companyProfile: {
+              create: {
+                name: extraData?.companyName || 'Nouvelle Entreprise',
+                type: (extraData?.companyType || 'AUTRE') as any,
+              }
+            }
+          })
+        },
+        include: {
+          developerProfile: true,
+          companyProfile: true,
+          keys: true,
+        }
+      });
+
+      const token = generateToken({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          developerProfile: user.developerProfile,
+          companyProfile: user.companyProfile,
+          keys: user.keys,
+        },
+        token,
+      };
+    } catch (error) {
+      if (error instanceof ConflictError || error instanceof BadRequestError) throw error;
+      throw new UnauthorizedError('Erreur lors de l\'inscription avec Firebase');
+    }
   },
 };

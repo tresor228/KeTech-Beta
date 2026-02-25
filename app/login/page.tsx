@@ -11,15 +11,68 @@ import { Label } from "@/components/ui/label"
 import { KeTechLogo } from "@/components/ketech-logo"
 import { ArrowLeft } from "lucide-react"
 
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { useToast } from "@/hooks/use-toast"
+
 export default function LoginPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Mock login - redirect to dashboard
-    router.push("/dashboard")
+    setIsLoading(true)
+
+    try {
+      // 1. Connexion Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const idToken = await userCredential.user.getIdToken()
+
+      // 2. Synchronisation avec le backend KeTech
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/firebase/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Erreur lors de la synchronisation avec le serveur')
+      }
+
+      // Stocker le JWT du backend si nécessaire (déjà géré par les cookies ou le state possiblement)
+      if (result.data.token) {
+        localStorage.setItem('ketech_token', result.data.token)
+      }
+
+      toast({
+        title: "Connexion réussie",
+        description: "Bon retour sur KeTech !",
+      })
+
+      // Redirection selon le rôle
+      const role = result.data.user.role
+      if (role === 'COMPANY') {
+        router.push("/company/dashboard")
+      } else {
+        router.push("/dashboard")
+      }
+    } catch (error: any) {
+      console.error(error)
+      toast({
+        title: "Erreur de connexion",
+        description: error.message || "Vérifiez vos identifiants",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -71,8 +124,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Sign in
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+              {isLoading ? "Connexion..." : "Se connecter"}
             </Button>
           </form>
         </div>

@@ -67,8 +67,40 @@ export const authController = {
     }
   },
 
+  // Connexion avec Firebase
+  firebaseLogin: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { idToken } = req.body;
+      const result = await authService.verifyFirebaseToken(idToken);
+
+      res.status(200).json({
+        success: true,
+        message: 'Connexion Firebase réussie',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Inscription avec Firebase
+  firebaseRegister: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { idToken, role, extraData } = req.body;
+      const result = await authService.registerWithFirebase({ idToken, role, extraData });
+
+      res.status(201).json({
+        success: true,
+        message: 'Inscription Firebase réussie',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // Obtenir l'utilisateur actuel
-  getCurrentUser: async (req: AuthRequest, res: Response, next: NextFunction) => {
+  getCurrentUser: async (req: AuthRequest<any, any, any>, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
         return res.status(401).json({

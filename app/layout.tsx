@@ -31,6 +31,8 @@ export const metadata: Metadata = {
   },
 }
 
+import { AuthProvider } from "@/hooks/use-auth"
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,9 +41,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {children}
-        <Toaster />
-        <Analytics />
+        <AuthProvider>
+          {children}
+          <Toaster />
+          <Analytics />
+        </AuthProvider>
       </body>
     </html>
   )

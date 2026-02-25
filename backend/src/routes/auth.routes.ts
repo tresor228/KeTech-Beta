@@ -56,6 +56,16 @@ router.post(
   authController.login
 );
 
+router.post(
+  '/firebase/login',
+  authController.firebaseLogin
+);
+
+router.post(
+  '/firebase/register',
+  authController.firebaseRegister
+);
+
 router.get(
   '/me',
   authenticate,

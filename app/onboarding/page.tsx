@@ -19,11 +19,39 @@ export default function OnboardingPage() {
 
   const progress = (currentStep / TOTAL_STEPS) * 100
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < TOTAL_STEPS) {
       setCurrentStep(currentStep + 1)
     } else {
-      // Complete onboarding
+      await handleComplete()
+    }
+  }
+
+  const handleComplete = async () => {
+    try {
+      const token = localStorage.getItem('ketech_token')
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/developer/onboarding`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          interests,
+          level: skillLevel,
+          objectives
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde de l\'onboarding')
+      }
+
+      router.push("/dashboard")
+    } catch (error) {
+      console.error('Erreur Onboarding:', error)
+      // On redirige quand même pour ne pas bloquer l'utilisateur, 
+      // mais on pourrait afficher une notification d'erreur
       router.push("/dashboard")
     }
   }

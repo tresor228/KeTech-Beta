@@ -44,6 +44,8 @@ model DeveloperProfile {
   lastName        String?
   bio             String?
   avatar          String?
+  country         String?
+  university      String?
   location        String?
   github          String?
   linkedin        String?
@@ -94,6 +96,7 @@ model CompanyProfile {
   description String?
   logo        String?
   website     String?
+  country     String?
   location    String?
   type        CompanyType
   size        String?     // 1-10, 11-50, 51-200, 201-500, 500+

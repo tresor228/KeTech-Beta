@@ -4,7 +4,7 @@ import prisma from '../config/database';
 import { BadRequestError } from '../utils/errors';
 
 // Initialiser OpenAI
-const openai = env.OPENAI_API_KEY 
+const openai = env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: env.OPENAI_API_KEY })
   : null;
 
@@ -86,8 +86,8 @@ Format: [id1, id2, id3, id4, id5]`;
           .sort((a, b) => recommendedIds.indexOf(a.id) - recommendedIds.indexOf(b.id))
           .slice(0, 5);
 
-        return recommendedProjects.length > 0 
-          ? recommendedProjects 
+        return recommendedProjects.length > 0
+          ? recommendedProjects
           : recommendProjectsFallback(developer, projects);
       } catch (error) {
         console.error('Erreur parsing réponse OpenAI:', error);
@@ -202,8 +202,8 @@ Format: [id1, id2, id3, ...]`;
           .sort((a, b) => recommendedIds.indexOf(a.id) - recommendedIds.indexOf(b.id))
           .slice(0, limit);
 
-        return recommendedDevelopers.length > 0 
-          ? recommendedDevelopers 
+        return recommendedDevelopers.length > 0
+          ? recommendedDevelopers
           : recommendCollaboratorsFallback(developer, developers, limit);
       } catch (error) {
         console.error('Erreur parsing réponse OpenAI:', error);
@@ -241,7 +241,7 @@ Format: [id1, id2, id3, ...]`;
       }
 
       const currentSkills = developer.skills.map(s => s.name);
-      
+
       if (!openai) {
         // Fallback: suggestions basiques
         const commonTechnologies = ['React', 'Node.js', 'TypeScript', 'Python', 'Docker', 'AWS'];
@@ -310,12 +310,12 @@ function recommendProjectsFallback(developer: any, projects: any[]) {
   return projects
     .filter(project => {
       // Filtrer par niveau
-      const levelMatch = project.difficulty === developerLevel || 
-                        (developerLevel === 'beginner' && ['beginner', 'intermediate'].includes(project.difficulty)) ||
-                        (developerLevel === 'intermediate' && ['beginner', 'intermediate', 'advanced'].includes(project.difficulty));
+      const levelMatch = project.difficulty === developerLevel ||
+        (developerLevel === 'beginner' && ['beginner', 'intermediate'].includes(project.difficulty)) ||
+        (developerLevel === 'intermediate' && ['beginner', 'intermediate', 'advanced'].includes(project.difficulty));
 
       // Vérifier si au moins une technologie correspond
-      const techMatch = project.technologies.some((tech: string) => 
+      const techMatch = project.technologies.some((tech: string) =>
         developerSkills.some((skill: string) => skill.includes(tech.toLowerCase()) || tech.toLowerCase().includes(skill))
       );
 
@@ -323,10 +323,10 @@ function recommendProjectsFallback(developer: any, projects: any[]) {
     })
     .sort((a, b) => {
       // Trier par correspondance de technologies
-      const aMatch = a.technologies.filter((t: string) => 
+      const aMatch = a.technologies.filter((t: string) =>
         developerSkills.some((s: string) => s.includes(t.toLowerCase()))
       ).length;
-      const bMatch = b.technologies.filter((t: string) => 
+      const bMatch = b.technologies.filter((t: string) =>
         developerSkills.some((s: string) => s.includes(t.toLowerCase()))
       ).length;
       return bMatch - aMatch;
@@ -336,11 +336,11 @@ function recommendProjectsFallback(developer: any, projects: any[]) {
 
 function recommendCollaboratorsFallback(developer: any, developers: any[], limit: number) {
   const developerSkills = developer.skills.map((s: any) => s.name.toLowerCase());
-  
+
   return developers
     .map(d => {
       const dSkills = d.skills.map((s: any) => s.name.toLowerCase());
-      const commonSkills = developerSkills.filter(s => dSkills.includes(s)).length;
+      const commonSkills = developerSkills.filter((s: string) => dSkills.includes(s)).length;
       const allSkills = [...new Set([...developerSkills, ...dSkills])].length;
       const similarity = allSkills > 0 ? commonSkills / allSkills : 0;
 

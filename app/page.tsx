@@ -5,7 +5,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { KeTechLogo } from "@/components/ketech-logo"
 import { ArrowRight, CheckCircle, Users, Award, Laptop, Building2, Code, TrendingUp, Shield, Zap, Star, Target, BarChart3 } from "lucide-react"
-import { BetaCountdown } from "@/components/beta-countdown"
 import { Footer } from "@/components/footer"
 import {
   Dialog,
@@ -89,7 +88,6 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <div className="max-w-3xl mx-auto space-y-6">
-          <BetaCountdown />
 
           <h1 className="text-5xl font-bold text-balance leading-tight">
             Technical Evaluation & Talent Matching for African Developers

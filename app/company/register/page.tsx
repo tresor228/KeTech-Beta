@@ -11,8 +11,14 @@ import { Label } from "@/components/ui/label"
 import { KeTechLogo } from "@/components/ketech-logo"
 import { ArrowLeft } from "lucide-react"
 
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { useToast } from "@/hooks/use-toast"
+
 export default function CompanyRegisterPage() {
   const router = useRouter()
+  const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     companyName: "",
     email: "",
@@ -20,9 +26,67 @@ export default function CompanyRegisterPage() {
     confirmPassword: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push("/company/dashboard")
+
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Erreur",
+        description: "Les mots de passe ne correspondent pas",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // 1. Inscription Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
+      const idToken = await userCredential.user.getIdToken()
+
+      // 2. Synchronisation avec le backend KeTech
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/firebase/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          idToken,
+          role: 'COMPANY',
+          extraData: {
+            companyName: formData.companyName,
+            companyType: 'AUTRE' // Valeur par défaut si non spécifié
+          }
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Erreur lors de la synchronisation avec le serveur')
+      }
+
+      if (result.data.token) {
+        localStorage.setItem('ketech_token', result.data.token)
+      }
+
+      toast({
+        title: "Compte entreprise créé !",
+        description: "Bienvenue sur KeTech Business.",
+      })
+
+      router.push("/company/dashboard")
+    } catch (error: any) {
+      console.error(error)
+      toast({
+        title: "Erreur d'inscription",
+        description: error.message || "Impossible de créer le compte entreprise",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -93,8 +157,8 @@ export default function CompanyRegisterPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Create Company Account
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+              {isLoading ? "Création..." : "Créer le compte entreprise"}
             </Button>
           </form>
         </div>
